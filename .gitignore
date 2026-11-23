@@ -14,7 +14,5 @@ venv/
 .RData
 .Ruserdata
 
-# Output & plots
-*.png
-*.jpg
+# Output
 outputs/
