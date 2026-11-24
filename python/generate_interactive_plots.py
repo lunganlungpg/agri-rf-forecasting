@@ -12,19 +12,26 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from sklearn.ensemble import RandomForestRegressor
 
+# Works both inside the installed ``agrirf`` package and as a plain script
+# run from the repository (``python python/<script>.py``).
+try:
+    from .agri_rf_data import resolve_data_path, resolve_output_dir
+    from .agri_rf_forecast import load_and_preprocess
+except ImportError:  # no parent package -> running as a standalone script
+    from agri_rf_data import resolve_data_path, resolve_output_dir
+    from agri_rf_forecast import load_and_preprocess
 
-def build_interactive_dashboard():
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    data_path = os.path.join(base_dir, "..", "data", "sample_yield_weather.csv")
-    plots_dir = os.path.join(base_dir, "..", "plots")
-    os.makedirs(plots_dir, exist_ok=True)
 
-    df = pd.read_csv(data_path).sort_values("year").reset_index(drop=True)
-    df["yield_lag1"] = df["yield_kg_ha"].shift(1)
-    df["yield_lag2"] = df["yield_kg_ha"].shift(2)
-    df["rainfall_ma2"] = df["rainfall_mm"].rolling(2).mean()
-    df["temp_ma2"] = df["temp_mean_c"].rolling(2).mean()
-    df = df.dropna().reset_index(drop=True)
+def build_interactive_dashboard(data_path=None, output_dir=None):
+    """Write the Plotly dashboard and 3D surface HTML files; return their paths.
+
+    ``data_path`` defaults to the sample dataset; ``output_dir`` defaults to the
+    repo's ``plots/`` folder (or ``./plots`` when installed with pip).
+    """
+    plots_dir = resolve_output_dir(output_dir)
+
+    # Load data and add the same lag / moving-average features as the pipeline
+    df = load_and_preprocess(resolve_data_path(data_path))
 
     features = [
         "yield_lag1", "yield_lag2", "rainfall_mm", "temp_max_c",
@@ -223,6 +230,7 @@ def build_interactive_dashboard():
     fig_3d.write_html(surface_path, include_plotlyjs="cdn")
 
     print(f"Interactive plots successfully generated:\n  - {dashboard_path}\n  - {surface_path}")
+    return dashboard_path, surface_path
 
 
 if __name__ == "__main__":

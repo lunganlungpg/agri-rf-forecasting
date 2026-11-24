@@ -5,16 +5,41 @@ Practical demonstration of Random Forest Regressor for agricultural yield foreca
 using lagged time-series features and climatic variables.
 """
 
-import os
+from __future__ import annotations
+
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
+try:  # imported as part of the installed ``agrirf`` package
+    from .agri_rf_data import resolve_data_path
+except ImportError:  # run directly as ``python python/agri_rf_forecast.py``
+    from agri_rf_data import resolve_data_path
+
+#: Predictors used by the forecasting model (lags + weather + crop vigour).
+FEATURE_COLS = [
+    "yield_lag1",
+    "yield_lag2",
+    "rainfall_mm",
+    "temp_mean_c",
+    "solar_rad_mj",
+    "ndvi_peak",
+    "soil_moisture_pct",
+    "rainfall_ma2",
+    "temp_ma2",
+]
+TARGET_COL = "yield_kg_ha"
+
 
 def load_and_preprocess(filepath: str) -> pd.DataFrame:
-    """Load agricultural time series and engineer lagged/rolling features."""
+    """Load agricultural time series and engineer lagged/rolling features.
+
+    ``filepath`` may be a local path or a URL (anything ``pandas.read_csv`` accepts).
+    The CSV needs ``year``, ``yield_kg_ha``, ``rainfall_mm`` and ``temp_mean_c``
+    plus the predictor columns listed in :data:`FEATURE_COLS`.
+    """
     df = pd.read_csv(filepath)
     df = df.sort_values("year").reset_index(drop=True)
 
@@ -40,25 +65,26 @@ def evaluate_forecast(y_true, y_pred) -> dict:
     return {"RMSE": rmse, "MAE": mae, "MAPE (%)": mape, "R2": r2}
 
 
-def run_pipeline():
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    data_path = os.path.join(current_dir, "..", "data", "sample_yield_weather.csv")
+def run_pipeline(data_path: str | None = None) -> dict:
+    """Cross-validate a Random Forest forecaster and print the results.
 
-    df = load_and_preprocess(data_path)
+    Parameters
+    ----------
+    data_path:
+        CSV to use. Defaults to the bundled sample dataset (see
+        ``agri_rf_data.resolve_data_path``).
+
+    Returns
+    -------
+    dict
+        ``{"fold_metrics": [...], "model": RandomForestRegressor,
+        "importances": pandas.Series}`` so the results can be reused in code.
+    """
+    df = load_and_preprocess(resolve_data_path(data_path))
 
     # Define predictor features and target variable
-    feature_cols = [
-        "yield_lag1",
-        "yield_lag2",
-        "rainfall_mm",
-        "temp_mean_c",
-        "solar_rad_mj",
-        "ndvi_peak",
-        "soil_moisture_pct",
-        "rainfall_ma2",
-        "temp_ma2",
-    ]
-    target_col = "yield_kg_ha"
+    feature_cols = FEATURE_COLS
+    target_col = TARGET_COL
 
     X = df[feature_cols]
     y = df[target_col]
@@ -101,6 +127,8 @@ def run_pipeline():
     print("=" * 65)
     for feat, imp in importances.items():
         print(f"  - {feat:<20}: {imp:.4f}")
+
+    return {"fold_metrics": fold_metrics, "model": final_rf, "importances": importances}
 
 
 if __name__ == "__main__":

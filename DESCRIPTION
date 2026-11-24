@@ -1,0 +1,21 @@
+Package: agrirf
+Title: Random Forest Forecasting for Agricultural Yield Time Series
+Version: 1.0.0
+Authors@R: person("Lunganlung", "P. G.", role = c("aut", "cre"),
+    email = "lunganlungpg@gmail.com")
+Description: Fits Random Forest regression models to agricultural yield time
+    series using autoregressive yield lags and agro-climatic predictors
+    (rainfall, temperature, solar radiation, NDVI, soil moisture), and ranks
+    predictors by permutation importance (%IncMSE). Ships helpers to load the
+    35-season sample dataset used in the accompanying Python pipeline.
+License: MIT + file LICENSE
+URL: https://github.com/lunganlungpg/agri-rf-forecasting
+BugReports: https://github.com/lunganlungpg/agri-rf-forecasting/issues
+Encoding: UTF-8
+Depends: R (>= 4.0.0)
+Imports:
+    randomForest,
+    stats,
+    utils
+Roxygen: list(markdown = TRUE)
+Config/roxygen2/version: 8.1.0

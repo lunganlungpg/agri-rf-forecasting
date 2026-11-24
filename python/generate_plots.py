@@ -6,6 +6,7 @@ yield forecasting using Random Forest regression.
 """
 
 import os
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -13,21 +14,26 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.inspection import PartialDependenceDisplay
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
+# Works both inside the installed ``agrirf`` package and as a plain script
+# run from the repository (``python python/<script>.py``).
+try:
+    from .agri_rf_data import resolve_data_path, resolve_output_dir
+    from .agri_rf_forecast import load_and_preprocess
+except ImportError:  # no parent package -> running as a standalone script
+    from agri_rf_data import resolve_data_path, resolve_output_dir
+    from agri_rf_forecast import load_and_preprocess
 
-def create_plots():
-    # Setup directories
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    data_path = os.path.join(base_dir, "..", "data", "sample_yield_weather.csv")
-    plots_dir = os.path.join(base_dir, "..", "plots")
-    os.makedirs(plots_dir, exist_ok=True)
 
-    # Load and prepare data
-    df = pd.read_csv(data_path).sort_values("year").reset_index(drop=True)
-    df["yield_lag1"] = df["yield_kg_ha"].shift(1)
-    df["yield_lag2"] = df["yield_kg_ha"].shift(2)
-    df["rainfall_ma2"] = df["rainfall_mm"].rolling(2).mean()
-    df["temp_ma2"] = df["temp_mean_c"].rolling(2).mean()
-    df = df.dropna().reset_index(drop=True)
+def create_plots(data_path=None, output_dir=None):
+    """Write the four 300 DPI PNG figures and return the output folder.
+
+    ``data_path`` defaults to the sample dataset; ``output_dir`` defaults to the
+    repo's ``plots/`` folder (or ``./plots`` when installed with pip).
+    """
+    plots_dir = resolve_output_dir(output_dir)
+
+    # Load data and add the same lag / moving-average features as the pipeline
+    df = load_and_preprocess(resolve_data_path(data_path))
 
     features = [
         "yield_lag1", "yield_lag2", "rainfall_mm", "temp_max_c",
@@ -140,6 +146,7 @@ def create_plots():
     plt.close()
 
     print(f"Successfully generated 4 static plots in: {plots_dir}")
+    return plots_dir
 
 
 if __name__ == "__main__":
